@@ -14,12 +14,20 @@ public:
     void print();
     void clear();
     std::vector<std::string> listShapes() const;
+    int selectShape(int id);
+    int selectShape(int x, int y);
+    int removeShape();
+    int paintShape(const std::string& color) const;
+    int editShape(const std::vector<int>& parameters) const;
+    int moveShape(const std::vector<int>& parameters);
     int addTriangle(bool fill, const std::string& color, int x, int y, int height);
     int addBox(bool fill, const std::string& color, int x, int y, int width, int height);
 private:
     std::vector<std::shared_ptr<Shape>> shapes;
     std::vector<std::vector<char> > grid;
+    int selectedShapeIndex = -1;
     void drawAllShapes();
+    int isShapeValid(const std::shared_ptr<Shape>& shape) const;
 };
 
 
