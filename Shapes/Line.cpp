@@ -1,5 +1,4 @@
 #include "Shape.h"
-#include "Shape.h"
 
 class Line final : public Shape {
     public:
@@ -10,7 +9,7 @@ class Line final : public Shape {
     ~Line() override = default;
 
     bool equals(const Shape& other) const override {
-        if (this->type != other.type) return false;
+        if (this->type != other.type) return this->id == other.id;
         auto& t = dynamic_cast<const Line&>(other);
         return Shape::equals(other) && dx == t.dx && dy == t.dy;
     }

@@ -9,7 +9,7 @@ class Circle final : public Shape {
     ~Circle() override = default;
 
     bool equals(const Shape& other) const override {
-        if (this->type != other.type) return false;
+        if (this->type != other.type) return this->id == other.id;
         auto& t = dynamic_cast<const Circle&>(other);
         return Shape::equals(other) && radius == t.radius;
     }

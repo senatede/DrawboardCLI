@@ -38,8 +38,8 @@ public:
     virtual std::string info() = 0;
     virtual std::vector<std::pair<int, int>> getCoordinates() = 0;
 
-    static void setStartingId(const int id) {nextId = id;}
-    // [[nodiscard]] int getId() const { return id; }
+    static int getNextId() {return nextId;}
+    static void setNextId(const int id) {nextId = id;}
 };
 
 #endif //SHAPE_H

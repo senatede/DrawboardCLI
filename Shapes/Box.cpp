@@ -9,7 +9,7 @@ public:
     ~Box() override = default;
 
     bool equals(const Shape& other) const override {
-        if (this->type != other.type) return false;
+        if (this->type != other.type) return this->id == other.id;
         auto& b = dynamic_cast<const Box&>(other);
         return Shape::equals(other) && width == b.width && height == b.height;
     }
