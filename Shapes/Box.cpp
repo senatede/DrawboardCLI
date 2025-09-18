@@ -39,7 +39,8 @@ public:
             if (i >= 0 && i < boardHeight) {
                 if (i == y || i == y + height - 1 || fill) {
                     for (int j = x; j < x + width; j++)
-                        setPixel(coordinates, i, j);
+                        if (j >= 0 && j < boardWidth)
+                            setPixel(coordinates, i, j);
                 }
                 else {
                     setPixel(coordinates,i, x);

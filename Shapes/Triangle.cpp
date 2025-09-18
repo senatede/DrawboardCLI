@@ -10,7 +10,7 @@ public:
     ~Triangle() override = default;
 
     bool equals(const Shape& other) const override {
-        if (typeid(*this) != typeid(other)) return false;
+        if (this->type != other.type) return false;
         auto& t = dynamic_cast<const Triangle&>(other);
         return Shape::equals(other) && height == t.height;
     }
@@ -41,7 +41,8 @@ public:
             if (row >= 0 && row < boardHeight) {
                 if (fill) {
                     for (int j = 0; j < numStars; ++j) {
-                        setPixel(coordinates, row, leftMost + j);
+                        if (leftMost + j >= 0 && leftMost + j < boardWidth)
+                            setPixel(coordinates, row, leftMost + j);
                     }
                 }
                 else {

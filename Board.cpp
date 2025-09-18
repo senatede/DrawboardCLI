@@ -1,10 +1,11 @@
 #include "Board.h"
 #include "Shapes/Triangle.cpp"
 #include "Shapes/Box.cpp"
+#include "Shapes/Circle.cpp"
+#include "Shapes/Line.cpp"
 
 #include <iostream>
 #include <vector>
-#include <__xlocale.h>
 
 int Shape::nextId = 0;
 
@@ -24,15 +25,19 @@ void Board::drawAllShapes() {
 
 void Board::print() {
     std::string result;
+    char lastChar = ' ';
     drawAllShapes();
     std::cout << "\033[2J\033[H";
     for (auto& row : grid) {
         for (const char c : row) {
-            switch (c) {
-                case 'R':   std::cout << "\033[31m"; break;
-                case 'G':   std::cout << "\033[32m"; break;
-                case 'B':   std::cout << "\033[34m"; break;
-                default:    std::cout << "\033[0m"; break;
+            if (c != lastChar) {
+                switch (c) {
+                    case 'R':   std::cout << "\033[31m"; break;
+                    case 'G':   std::cout << "\033[32m"; break;
+                    case 'B':   std::cout << "\033[34m"; break;
+                    default:    std::cout << "\033[0m"; break;
+                }
+                lastChar = c;
             }
             std::cout << c;
         }
@@ -139,6 +144,36 @@ int Board::editShape(const std::vector<int>& parameters) const {
             box->height = old_height;
             return valid;
         }
+        case ShapeType::Circle: {
+            if (parameters.size() != 1) return -2;
+
+            const auto cir = std::dynamic_pointer_cast<Circle>(shape);
+            const int old_radius = cir->radius;
+            const int new_radius = parameters[0];
+            cir->radius = new_radius;
+
+            const int valid = isShapeValid(cir);
+            if (valid == 0) return 0;
+            cir->radius = old_radius;
+            return valid;
+        }
+        case ShapeType::Line: {
+            if (parameters.size() != 2) return -2;
+
+            const auto lin = std::dynamic_pointer_cast<Line>(shape);
+            const int old_dx = lin->dx;
+            const int new_dx = parameters[0]-lin->x;
+            const int old_dy = lin->y;
+            const int new_dy = parameters[1]-lin->y;
+            lin->dx = new_dx;
+            lin->dy = new_dy;
+
+            const int valid = isShapeValid(lin);
+            if (valid == 0) return 0;
+            lin->dx = old_dx;
+            lin->dy = old_dy;
+            return valid;
+        }
     }
 }
 
@@ -173,7 +208,7 @@ int Board::moveShape(const std::vector<int>& parameters) {
 
 int Board::addTriangle(const bool fill, const std::string& color, int x, int y, int height) {
     const auto tr = std::make_shared<Triangle>(this->width, this->height, fill, color, x, y, height);
-    int valid = isShapeValid(tr);
+    const int valid = isShapeValid(tr);
     if (valid == 0) {
         shapes.emplace_back(tr); return 0;
     }
@@ -182,9 +217,31 @@ int Board::addTriangle(const bool fill, const std::string& color, int x, int y, 
 
 int Board::addBox(const bool fill, const std::string& color, int x, int y, int width, int height) {
     const auto box = std::make_shared<Box>(this->width, this->height, fill, color, x, y, width, height);
-    int valid = isShapeValid(box);
+    const int valid = isShapeValid(box);
     if (valid == 0) {
         shapes.emplace_back(box); return 0;
     }
     return valid;
+}
+
+int Board::addCircle(const bool fill, const std::string& color, int x, int y, int radius) {
+    const auto cir = std::make_shared<Circle>(this->width, this->height, fill, color, x, y, radius);
+    const int valid = isShapeValid(cir);
+    if (valid == 0) {
+        shapes.emplace_back(cir); return 0;
+    }
+    return valid;
+}
+
+int Board::addLine(bool fill, const std::string &color, int x, int y, int x2, int y2) {
+    const auto lin = std::make_shared<Line>(this->width, this->height, fill, color, x, y, x2, y2);
+    const int valid = isShapeValid(lin);
+    if (valid == 0) {
+        shapes.emplace_back(lin); return 0;
+    }
+    return valid;
+}
+
+int Board::saveBoard() const {
+    return 0;
 }

@@ -25,6 +25,8 @@ class CLI {
     int paint(const std::string& input) const;
     int edit(const std::string& input) const;
     int move(const std::string& input) const;
+    int save(const std::string& input) const;
+    int load(const std::string& input) const;
     static int unknown(const std::string& input) ;
 
 public:

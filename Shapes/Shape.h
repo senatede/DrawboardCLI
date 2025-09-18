@@ -1,12 +1,11 @@
-#include <utility>
-#include <vector>
-
 #ifndef SHAPE_H
 #define SHAPE_H
 
-class Board;
+#include <utility>
+#include <vector>
 
-enum class ShapeType { Triangle, Box };
+
+enum class ShapeType { Triangle, Box, Circle, Line };
 
 class Shape {
 protected:

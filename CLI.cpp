@@ -32,6 +32,8 @@ void CLI::command_handling(const std::string& input) {
     else if (input.starts_with("paint")) n = paint(input);
     else if (input.starts_with("edit")) n = edit(input);
     else if (input.starts_with("move")) n = move(input);
+    else if (input.starts_with("save")) n = save(input);
+    else if (input.starts_with("load")) n = load(input);
     else n = unknown(input);
 
     for (int i = n; i < term_height - 1; ++i)
@@ -43,9 +45,19 @@ int CLI::help() {
     std::cout << "Available commands:" << std::endl;
     std::cout << " - help" << std::endl;
     std::cout << " - exit" << std::endl;
-    std::cout << " - create <width> <height> - create board" << std::endl;
-    std::cout << " - draw - draw board" << std::endl;
-    std::cout << " - add <shape: triangle|box> <fill|frame> <color: red|green|blue> <x> <y> [extra parameters]" << std::endl;
+    std::cout << " - create <width> <height> - Create blackboard." << std::endl;
+    std::cout << " - draw - Draw blackboard to the console." << std::endl;
+    std::cout << " - list - Print all added shapes with their IDs and parameters." << std::endl;
+    std::cout << " - shape - Print a list of all available shapes and parameters for add call." << std::endl;
+    std::cout << " - add <parameters> - Add shape with specified colour and fill mode to the blackboard." << std::endl;
+    std::cout << " - select <id|x y> - Select a shape with an ID Or foreground shape by the selected coordinates." << std::endl;
+    std::cout << " - remove - Remove selected from blackboard the shape." << std::endl;
+    std::cout << " - edit <parameters> - Allows to modify the parameters of the selected figure." << std::endl;
+    std::cout << " - paint <color> - Change the colour the selected of figure." << std::endl;
+    std::cout << " - move <coordinates> - Move the selected shape to the coordinates." << std::endl;
+    std::cout << " - clear - Remove all shapes from blackboard." << std::endl;
+    std::cout << " - save <file-path> - Save the blackboard to the file." << std::endl;
+    std::cout << " - load <file-path> - Load the blackboard from the file." << std::endl;
     return 6;
 }
 
@@ -92,19 +104,23 @@ int CLI::add(const std::string& input) const {
     std::string cmd, shape, fill_word, color;
     int x, y;
 
-    iss >> cmd >> shape >> fill_word >> color >> x >> y;
+    iss >> cmd >> shape;
     if (board == nullptr) {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
     if (iss.fail()) {
-        std::cout << "Error: use add <shape: triangle|box> <fill|frame> <color: red|green|blue|white|yellow> <x> <y> [extra parameters]" << std::endl; return 1;
+        std::cout << "Error: use add <shape: triangle|box|circle|line>" << std::endl; return 1;
     }
-    if (shape != "triangle" && shape != "box") {
+    if (shape != "triangle" && shape != "box" && shape != "circle" && shape != "line") {
         std::cout << "Error: unknown shape " + shape << std::endl; return 1;
     }
-    if (fill_word != "fill" && fill_word != "frame") {
-        std::cout << "Error: unknown fill " + fill_word << std::endl; return 1;
+    if (shape == "triangle" || shape == "box" || shape == "circle") {
+        iss >> fill_word;
+        if (fill_word != "fill" && fill_word != "frame") {
+            std::cout << "Error: unknown fill " + fill_word << std::endl; return 1;
+        }
     }
+    iss >> color >> x >> y;
     if (color != "red" && color != "green" && color != "blue") {
         std::cout << "Error: unknown color " + color << std::endl; return 1;
     }
@@ -142,6 +158,14 @@ int CLI::add(const std::string& input) const {
             return board->addBox(fill, color, x, y, parameters[0], parameters[1]);
         });
     }
+    if (shape == "circle") {
+        return tryAddShape(1, [&] {return board->addCircle(fill, color, x, y, parameters[0]);
+        });
+    }
+    if (shape == "line") {
+        return tryAddShape(2, [&] {return board->addLine(fill, color, x, y, parameters[0], parameters[1]);
+        });
+    }
     return 0;
 }
 
@@ -170,9 +194,11 @@ int CLI::list() const {
 
 int CLI::shapes() {
     std::cout << "Available shapes:" << std::endl;
-    std::cout << "  triangle <fill|frame> <color: red|green|blue> <x> <y> <height>"<<  std::endl;
-    std::cout << "  box <fill|frame> <color: red|green|blue> <x> <y> <width> <height>"<<  std::endl;
-    return 3;
+    std::cout << "  triangle <fill|frame> <color: red|green|blue> <x> <y> <height>" << std::endl;
+    std::cout << "  box <fill|frame> <color: red|green|blue> <x> <y> <width> <height>" << std::endl;
+    std::cout << "  circle <fill|frame> <color: red|green|blue> <x> <y> <radius>" << std::endl;
+    std::cout << "  line color: red|green|blue> <x> <y> <x2> <y2>" << std::endl;
+    return 4;
 }
 
 int CLI::select(const std::string &input) const {
@@ -189,7 +215,7 @@ int CLI::select(const std::string &input) const {
         case 1:
             if (board->selectShape(parameters[0])) std::cout << "Error: shape with such id does not exist." << std::endl; break;
         case 2:
-            if (board->selectShape(parameters[0], parameters[1])) std::cout << "Error: shape with such id does not exist." << std::endl; break;
+            if (board->selectShape(parameters[0], parameters[1])) std::cout << "Error: shape with those coordinates does not exist." << std::endl; break;
         default:
             std::cout << "Error: wrong parameters" << std::endl;
     }
@@ -273,4 +299,12 @@ int CLI::move(const std::string& input) const {
         default:
             return draw();
     }
+}
+
+int CLI::save(const std::string& input) const {
+    return 0;
+}
+
+int CLI::load(const std::string& input) const {
+    return 0;
 }
