@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 int Shape::nextId = 0;
 
@@ -35,6 +36,7 @@ void Board::print() {
                     case 'R':   std::cout << "\033[31m"; break;
                     case 'G':   std::cout << "\033[32m"; break;
                     case 'B':   std::cout << "\033[34m"; break;
+                    case 'W':   std::cout << "\033[37m"; break;
                     default:    std::cout << "\033[0m"; break;
                 }
                 lastChar = c;
@@ -96,7 +98,12 @@ int Board::removeShape() {
 
 int Board::paintShape(const std::string& color) const {
     if (selectedShapeIndex == -1) return 1;
+    std::string old_color = shapes[selectedShapeIndex]->color;
     shapes[selectedShapeIndex]->color = color;
+    if (int code = isShapeValid(shapes[selectedShapeIndex]); code != 0) {
+        shapes[selectedShapeIndex]->color = old_color;
+        return code;
+    }
     return 0;
 }
 
@@ -244,7 +251,7 @@ int Board::addLine(bool fill, const std::string &color, int x, int y, int x2, in
 
 #include <fstream>
 
-void Board::saveToFile(const std::string& filepath) const {
+int Board::saveToFile(const std::string& filepath) const {
     std::ofstream file(filepath);
     if (!file.is_open()) return 1;
 
@@ -298,4 +305,85 @@ void Board::saveToFile(const std::string& filepath) const {
     file << "}\n";
 
     file.close();
+    return 0;
+}
+
+std::unique_ptr<Board> Board::loadFromFile(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) return nullptr;
+
+    nlohmann::json j;
+    try {
+        file >> j;
+    } catch (const nlohmann::json::exception&) {
+        file.close();
+        return nullptr;
+    }
+    file.close();
+
+    if (!j.contains("width") || !j.contains("height") || !j.contains("next_id") || !j.contains("selected_id"))
+        return nullptr;
+
+    int width = j["width"];
+    int height = j["height"];
+    auto board = std::make_unique<Board>(width, height);
+    Shape::setNextId(j["next_id"]);
+    board->selectedShapeIndex = j["selected_id"];
+
+    if (!j.contains("shapes") || !j["shapes"].is_array())
+        return board;
+
+    for (const auto& s : j["shapes"]) {
+        if (!s.contains("id") || !s.contains("type") || !s.contains("fill") || !s.contains("color") || !s.contains("x") || !s.contains("y"))
+            return nullptr;
+
+        int id = s["id"];
+        auto type = static_cast<ShapeType>(s["type"].get<int>());
+        bool fill = s["fill"].get<int>() != 0;
+        std::string color = s["color"];
+        int x = s["x"];
+        int y = s["y"];
+
+        switch (type) {
+            case ShapeType::Triangle: {
+                if (!s.contains("height")) return nullptr;
+                int h = s["height"];
+                auto tr = std::make_shared<Triangle>(board->width, board->height, fill, color, x, y, h);
+                tr->id = id;
+                if (board->isShapeValid(tr) != 0) return nullptr;
+                board->shapes.emplace_back(tr);
+                break;
+            }
+            case ShapeType::Box: {
+                if (!s.contains("width") || !s.contains("height")) return nullptr;
+                int w = s["width"];
+                int h = s["height"];
+                auto box = std::make_shared<Box>(board->width, board->height, fill, color, x, y, w, h);
+                box->id = id;
+                if (board->isShapeValid(box) != 0) return nullptr;
+                board->shapes.emplace_back(box);
+                break;
+            }
+            case ShapeType::Circle: {
+                if (!s.contains("radius")) return nullptr;
+                int r = s["radius"];
+                auto cir = std::make_shared<Circle>(board->width, board->height, fill, color, x, y, r);
+                cir->id = id;
+                if (board->isShapeValid(cir) != 0) return nullptr;
+                board->shapes.emplace_back(cir);
+                break;
+            }
+            case ShapeType::Line: {
+                if (!s.contains("dx") || !s.contains("dy")) return nullptr;
+                int dx = s["dx"];
+                int dy = s["dy"];
+                auto lin = std::make_shared<Line>(board->width, board->height, fill, color, x, y, x + dx, y + dy);
+                lin->id = id;
+                if (board->isShapeValid(lin) != 0) return nullptr;
+                board->shapes.emplace_back(lin);
+                break;
+            }
+        }
+    }
+    return board;
 }

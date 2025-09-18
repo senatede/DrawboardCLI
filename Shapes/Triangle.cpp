@@ -10,7 +10,7 @@ public:
     ~Triangle() override = default;
 
     bool equals(const Shape& other) const override {
-        if (this->type != other.type) return false;
+        if (this->type != other.type) return this->id == other.id;
         auto& t = dynamic_cast<const Triangle&>(other);
         return Shape::equals(other) && height == t.height;
     }

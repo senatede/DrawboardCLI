@@ -121,7 +121,7 @@ int CLI::add(const std::string& input) const {
         }
     }
     iss >> color >> x >> y;
-    if (color != "red" && color != "green" && color != "blue") {
+    if (color != "red" && color != "green" && color != "blue" && color != "white") {
         std::cout << "Error: unknown color " + color << std::endl; return 1;
     }
     color[0] = static_cast<char>(std::toupper(color[0]));
@@ -194,7 +194,7 @@ int CLI::list() const {
 
 int CLI::shapes() {
     std::cout << "Available shapes:" << std::endl;
-    std::cout << "  triangle <fill|frame> <color: red|green|blue> <x> <y> <height>" << std::endl;
+    std::cout << "  triangle <fill|frame> <color: red|green|blue|white> <x> <y> <height>" << std::endl;
     std::cout << "  box <fill|frame> <color: red|green|blue> <x> <y> <width> <height>" << std::endl;
     std::cout << "  circle <fill|frame> <color: red|green|blue> <x> <y> <radius>" << std::endl;
     std::cout << "  line color: red|green|blue> <x> <y> <x2> <y2>" << std::endl;
@@ -239,14 +239,18 @@ int CLI::paint(const std::string& input) const {
     std::istringstream iss(input);
     std::string cmd, color;
     iss >> cmd >> color;
-    if (color != "red" && color != "green" && color != "blue") {
+    if (color != "red" && color != "green" && color != "blue" && color != "white") {
         std::cout << "Error: unknown color - " << color << std::endl; return 1;
     }
     color[0] = static_cast<char>(std::toupper(color[0]));
-    if (board->paintShape(color)) {
-        std::cout << "Error: select a shape first." << std::endl; return 1;
+    switch (board->paintShape(color)) {
+        case 1:
+            std::cout << "Error: select a shape first." << std::endl; return 1;
+        case 3:
+            std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
+        default:
+            return draw();
     }
-    return draw();
 }
 
 int CLI::edit(const std::string& input) const {
@@ -308,11 +312,22 @@ int CLI::save(const std::string& input) const {
     std::istringstream iss(input);
     std::string cmd, filepath;
     iss >> cmd >> filepath;
-    board->saveToFile(filepath);
-    std::cout << "Successfully saved to file " << filepath << std::endl;
+    if (board->saveToFile(filepath)) std::cout << "Error: saving file failed." << std::endl;
+    else std::cout << "Successfully saved to file " << filepath << std::endl;
     return 1;
 }
 
-int CLI::load(const std::string& input) const {
-    return 0;
+int CLI::load(const std::string& input) {
+    std::string cmd, filepath;
+    std::istringstream iss(input);
+    iss >> cmd >> filepath;
+    auto new_board = Board::loadFromFile(filepath);
+    if (!new_board) {
+        std::cout << "Error loading file " << filepath << std::endl;
+        return 1;
+    }
+    delete board;
+    board = new_board.release();
+    std::cout << "Successfully loaded board from " << filepath << std::endl;
+    return 1;
 }

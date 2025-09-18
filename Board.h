@@ -9,6 +9,8 @@ public:
     int width, height;
 
     Board(int w, int h);
+    Board() = default;
+
     ~Board() = default;
 
     void print();
@@ -25,7 +27,8 @@ public:
     int addCircle(bool fill, const std::string& color, int x, int y, int radius);
     int addLine(bool fill, const std::string& color, int x, int y, int x2, int y2);
 
-    void saveToFile(const std::string& filepath) const;
+    int saveToFile(const std::string& filepath) const;
+    static std::unique_ptr<Board> loadFromFile(const std::string& filepath);
 private:
     std::vector<std::shared_ptr<Shape>> shapes;
     std::vector<std::vector<char> > grid;
