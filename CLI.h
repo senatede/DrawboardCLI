@@ -12,15 +12,22 @@ class CLI {
 
     static std::string command_input();
     void command_handling(const std::string& input);
-    void help() const;
-    static void exit_() ;
-    void create(const std::string& input);
-    void clear() const;
-    void draw() const;
-    void list() const;
-    void shapes() const;
-    void add(const std::string& input) const;
-    void unknown(const std::string& input) const;
+    static int help() ;
+    static int exit_() ;
+    int create(const std::string& input);
+    int clear() const;
+    int draw() const;
+    int list() const;
+    static int shapes() ;
+    int add(const std::string& input) const;
+    int select(const std::string& input) const;
+    int remove() const;
+    int paint(const std::string& input) const;
+    int edit(const std::string& input) const;
+    int move(const std::string& input) const;
+    int save(const std::string& input) const;
+    int load(const std::string& input) const;
+    static int unknown(const std::string& input) ;
 
 public:
     [[noreturn]] explicit CLI(int h);
