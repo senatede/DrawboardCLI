@@ -1,5 +1,4 @@
 #include "Shape.h"
-#include "Shape.h"
 
 class Line final : public Shape {
     public:

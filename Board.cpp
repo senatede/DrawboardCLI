@@ -242,6 +242,60 @@ int Board::addLine(bool fill, const std::string &color, int x, int y, int x2, in
     return valid;
 }
 
-int Board::saveBoard() const {
-    return 0;
+#include <fstream>
+
+void Board::saveToFile(const std::string& filepath) const {
+    std::ofstream file(filepath);
+    if (!file.is_open()) return 1;
+
+    file << "{\n";
+    file << R"(  "width": )" << width << ",\n";
+    file << R"(  "height": )" << height << ",\n";
+    file << R"(  "next_id": )" << Shape::getNextId() << ",\n";
+    file << R"(  "selected_id": )" << selectedShapeIndex << ",\n";
+    file << R"(  "shapes": [)" << "\n";
+
+    for (size_t i = 0; i < shapes.size(); i++) {
+        auto &shape = shapes[i];
+        file << "    {\n";
+        file << R"(      "id": )" << shape->id << ",\n";
+        file << R"(      "type": )" << static_cast<int>(shape->type) << ",\n";
+        file << R"(      "fill": )" << shape->fill << ",\n";
+        file << R"(      "color": ")" << shape->color << "\",\n";
+        file << R"(      "x": )" << shape->x << ",\n";
+        file << R"(      "y": )" << shape->y << ",\n";
+
+        switch (shape->type) {
+            case ShapeType::Triangle: {
+                const auto tr = std::dynamic_pointer_cast<Triangle>(shape);
+                file << "      \"height\": " << tr->height << "\n";
+                break;
+            }
+            case ShapeType::Box: {
+                const auto box = std::dynamic_pointer_cast<Box>(shape);
+                file << "      \"width\": " << box->width << ",\n";
+                file << "      \"height\": " << box->height << "\n";
+                break;
+            }
+            case ShapeType::Circle: {
+                const auto cir = std::dynamic_pointer_cast<Circle>(shape);
+                file << "      \"radius\": " << cir->radius << "\n";
+                break;
+            }
+            case ShapeType::Line: {
+                const auto lin = std::dynamic_pointer_cast<Line>(shape);
+                file << "      \"dx\": " << lin->dx << ",\n";
+                file << "      \"dy\": " << lin->dy << "\n";
+                break;
+            }
+        }
+        file << "    }";
+        if (i + 1 < shapes.size()) file << ",";
+        file << "\n";
+    }
+
+    file << "  ]\n";
+    file << "}\n";
+
+    file.close();
 }

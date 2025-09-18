@@ -302,7 +302,15 @@ int CLI::move(const std::string& input) const {
 }
 
 int CLI::save(const std::string& input) const {
-    return 0;
+    if (board == nullptr) {
+        std::cout << "Error: board doesn't exist." << std::endl; return 1;
+    }
+    std::istringstream iss(input);
+    std::string cmd, filepath;
+    iss >> cmd >> filepath;
+    board->saveToFile(filepath);
+    std::cout << "Successfully saved to file " << filepath << std::endl;
+    return 1;
 }
 
 int CLI::load(const std::string& input) const {
