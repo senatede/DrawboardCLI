@@ -3,7 +3,7 @@
 
 #include <utility>
 #include <vector>
-
+#include "Color.h"
 
 enum class ShapeType { Triangle, Box, Circle, Line };
 
@@ -20,10 +20,10 @@ public:
     int x, y;
     int id;
     bool fill;
-    std::string color;
+    std::shared_ptr<Color> color;
 
-    Shape(const int boardWidth, const int boardHeight, const ShapeType type, const bool fill, std::string color, const int x, const int y) :
-        x(x), y(y), boardWidth(boardWidth), boardHeight(boardHeight), type(type), fill(fill), color(std::move(color)), id(nextId++) {}
+    Shape(const int boardWidth, const int boardHeight, const ShapeType type, const bool fill, const std::shared_ptr<Color> &color, const int x, const int y) :
+        x(x), y(y), boardWidth(boardWidth), boardHeight(boardHeight), type(type), fill(fill), color(color), id(nextId++) {}
     virtual ~Shape() = default;
 
     virtual bool equals(const Shape& other) const {

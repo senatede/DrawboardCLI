@@ -27,7 +27,10 @@ class CLI {
     int move(const std::string& input) const;
     int save(const std::string& input) const;
     int load(const std::string& input);
-    static int unknown(const std::string& input) ;
+    static int unknown(const std::string& input);
+
+    int color(const std::string& input) const;
+    int colors() const;
 
 public:
     [[noreturn]] explicit CLI(int h);

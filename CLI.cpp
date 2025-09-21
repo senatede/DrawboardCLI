@@ -34,6 +34,8 @@ void CLI::command_handling(const std::string& input) {
     else if (input.starts_with("move")) n = move(input);
     else if (input.starts_with("save")) n = save(input);
     else if (input.starts_with("load")) n = load(input);
+    else if (input == "colors") n = colors();
+    else if (input.starts_with("color")) n = color(input);
     else n = unknown(input);
 
     for (int i = n; i < term_height - 1; ++i)
@@ -47,6 +49,8 @@ int CLI::help() {
     std::cout << " - exit" << std::endl;
     std::cout << " - create <width> <height> - Create blackboard." << std::endl;
     std::cout << " - draw - Draw blackboard to the console." << std::endl;
+    std::cout << " - color <name> <r> <g> <b> - add color." << std::endl;
+    std::cout << " - colors - list all available colors." << std::endl;
     std::cout << " - list - Print all added shapes with their IDs and parameters." << std::endl;
     std::cout << " - shape - Print a list of all available shapes and parameters for add call." << std::endl;
     std::cout << " - add <parameters> - Add shape with specified colour and fill mode to the blackboard." << std::endl;
@@ -58,7 +62,7 @@ int CLI::help() {
     std::cout << " - clear - Remove all shapes from blackboard." << std::endl;
     std::cout << " - save <file-path> - Save the blackboard to the file." << std::endl;
     std::cout << " - load <file-path> - Load the blackboard from the file." << std::endl;
-    return 6;
+    return 18;
 }
 
 int CLI::exit_() {
@@ -121,10 +125,6 @@ int CLI::add(const std::string& input) const {
         }
     }
     iss >> color >> x >> y;
-    if (color != "red" && color != "green" && color != "blue" && color != "white") {
-        std::cout << "Error: unknown color " + color << std::endl; return 1;
-    }
-    color[0] = static_cast<char>(std::toupper(color[0]));
     int fill = (fill_word == "fill");
 
     std::vector<int> parameters;
@@ -137,6 +137,8 @@ int CLI::add(const std::string& input) const {
             return 1;
         }
         switch (addFunc()) {
+            case -1:
+                std::cout << "Error: unknown color " + color << std::endl; return 1;
             case 1:
                 std::cout << "Error: shape won't be visible." << std::endl; return 1;
             case 2:
@@ -187,7 +189,7 @@ int CLI::list() const {
     }
     std::cout << "All figures on board:" << std::endl;
     for (const auto& shape : shapes) {
-        std::cout << "  id:" << shape << std::endl;
+        std::cout << shape << std::endl;
     }
     return shapes.size();
 }
@@ -239,13 +241,11 @@ int CLI::paint(const std::string& input) const {
     std::istringstream iss(input);
     std::string cmd, color;
     iss >> cmd >> color;
-    if (color != "red" && color != "green" && color != "blue" && color != "white") {
-        std::cout << "Error: unknown color - " << color << std::endl; return 1;
-    }
-    color[0] = static_cast<char>(std::toupper(color[0]));
     switch (board->paintShape(color)) {
         case 1:
             std::cout << "Error: select a shape first." << std::endl; return 1;
+        case 2:
+            std::cout << "Error: unknown color - " << color << std::endl; return 1;
         case 3:
             std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
         default:
@@ -322,12 +322,39 @@ int CLI::load(const std::string& input) {
     std::istringstream iss(input);
     iss >> cmd >> filepath;
     auto new_board = Board::loadFromFile(filepath);
-    if (!new_board) {
-        std::cout << "Error loading file " << filepath << std::endl;
-        return 1;
-    }
+    if (!new_board) return 1;
     delete board;
     board = new_board.release();
     std::cout << "Successfully loaded board from " << filepath << std::endl;
     return 1;
+}
+
+int CLI::color(const std::string& input) const {
+    if (board == nullptr) {
+        std::cout << "Error: board doesn't exist." << std::endl; return 1;
+    }
+    std::istringstream iss(input);
+    std::string cmd, name;
+    int r, g, b;
+    iss >> cmd >> name >> r >> g >> b;
+    if (iss.fail()) std::cout << "Error: invalid parameters, usage: color <name> <r> <g> <b>." << std::endl;
+    else if (r<0 || r>256) std::cout << "Error: invalid r value, should be 0 between 255." << std::endl;
+    else if (g<0 || g>256) std::cout << "Error: invalid g value, should be 0 between 255." << std::endl;
+    else if (b<0 || b>256) std::cout << "Error: invalid b value, should be 0 between 255." << std::endl;
+    else if (board->addColor(name, r, g, b)) std::cout << "Error: color with that name already exists." << std::endl;
+    else std::cout << "Successfully added color " << name << std::endl;
+    return 1;
+}
+
+int CLI::colors() const {
+    if (board == nullptr) {
+        std::cout << "Error: board doesn't exist." << std::endl; return 1;
+    }
+    const auto colors = board->listColors();
+    if (colors.empty()) {
+        std::cout << "No colors found." << std::endl; return 1;
+    }
+    std::cout << "Colors:" << std::endl;
+    for (const auto& c : colors) std::cout << c << std::endl;
+    return colors.size() + 1;
 }
