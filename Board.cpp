@@ -1,24 +1,21 @@
 #include "Board.h"
-#include "Shapes/Triangle.cpp"
-#include "Shapes/Box.cpp"
-#include "Shapes/Circle.cpp"
-#include "Shapes/Line.cpp"
-
-#include <iostream>
-#include <vector>
-#include <nlohmann/json.hpp>
 
 int Shape::nextId = 0;
 
-Board::Board(const int w, const int h) : width(w), height(h), grid(height, std::vector(width, ' ')), shapes(0) {}
+Board::Board(const int w, const int h) : width(w), height(h), shapes(0), grid(std::vector(this->height, std::vector<std::shared_ptr<Color>>(this->width, nullptr))) {
+    colors["red"] = std::make_shared<Color>("red", 255, 0, 0);
+    colors["green"] = std::make_shared<Color>("green", 0, 255, 0);
+    colors["blue"] = std::make_shared<Color>("blue", 0, 0, 255);
+    colors["white"] = std::make_shared<Color>("white", 255, 255, 255);
+}
 
 void Board::drawAllShapes() {
-    grid = std::vector(this->height, std::vector(this->width, ' '));
-    for (auto& shape : this->shapes) {
+    grid = std::vector(this->height, std::vector<std::shared_ptr<Color>>(this->width, nullptr));
+    for (const auto& shape : this->shapes) {
         auto coordinates = shape->getCoordinates();
         if (!coordinates.empty()) {
-            for (auto coord : coordinates) {
-                grid[coord.first][coord.second] = shape->color[0];
+            for (auto [row, col] : coordinates) {
+                grid[row][col] = shape->color;
             }
         }
     }
@@ -26,22 +23,18 @@ void Board::drawAllShapes() {
 
 void Board::print() {
     std::string result;
-    char lastChar = ' ';
     drawAllShapes();
     std::cout << "\033[2J\033[H";
     for (auto& row : grid) {
-        for (const char c : row) {
-            if (c != lastChar) {
-                switch (c) {
-                    case 'R':   std::cout << "\033[31m"; break;
-                    case 'G':   std::cout << "\033[32m"; break;
-                    case 'B':   std::cout << "\033[34m"; break;
-                    case 'W':   std::cout << "\033[37m"; break;
-                    default:    std::cout << "\033[0m"; break;
-                }
-                lastChar = c;
+        for (auto c : row) {
+            if (c == nullptr) {
+                std::cout << "\033[0m";
+                std::cout << ' ';
             }
-            std::cout << c;
+            else {
+                std::cout << "\033[38;2;" << c->r << ";" << c->g << ";" << c->b << "m";;
+                std::cout << static_cast<char>(std::toupper(c->name[0]));
+            }
         }
         std::cout << "\n";
     }
@@ -50,21 +43,24 @@ void Board::print() {
 
 void Board::clear() {
     shapes.clear();
-    grid = std::vector(this->height, std::vector(this->width, ' '));
+    grid = std::vector(this->height, std::vector<std::shared_ptr<Color>>(this->width, nullptr));
 }
 
 std::vector<std::string> Board::listShapes() const {
     std::vector<std::string> result;
     result.reserve(this->shapes.size());
     for (const auto& shape : this->shapes) {
-            result.emplace_back(shape->info());
+        std::string info = "";
+        if (shape->id == shapes[selectedShapeIndex]->id) info += "* ";
+        info += shape->info();
+        result.emplace_back(info);
     }
     return result;
 }
 
 int Board::selectShape(int id) {
-    auto it = [&] {
-        for (int i = 0; i < static_cast<int>(shapes.size()); i++) if (shapes[i]->id == id) return i;
+    auto it = [&]->int {
+        for (size_t i = 0; i < shapes.size(); i++) if (shapes[i]->id == id) return i;
         return -1;
     };
     const int index = it();
@@ -85,7 +81,7 @@ int Board::selectShape(int x, int y) {
     const int index = it();
     if (index == -1) return 1;
     selectedShapeIndex = index;
-    std::cout << "You have selected shape with id:" << shapes[selectedShapeIndex]->info() << std::endl;
+    std::cout << "You have selected shape with " << shapes[selectedShapeIndex]->info() << std::endl;
     return 0;
 }
 
@@ -96,11 +92,12 @@ int Board::removeShape() {
     return 0;
 }
 
-int Board::paintShape(const std::string& color) const {
+int Board::paintShape(const std::string& color) {
     if (selectedShapeIndex == -1) return 1;
-    std::string old_color = shapes[selectedShapeIndex]->color;
-    shapes[selectedShapeIndex]->color = color;
-    if (int code = isShapeValid(shapes[selectedShapeIndex]); code != 0) {
+    if (!colors.contains(color)) return 2;
+    const auto old_color = shapes[selectedShapeIndex]->color;
+    shapes[selectedShapeIndex]->color = colors[color];
+    if (const int code = isShapeValid(shapes[selectedShapeIndex]); code != 0) {
         shapes[selectedShapeIndex]->color = old_color;
         return code;
     }
@@ -214,7 +211,8 @@ int Board::moveShape(const std::vector<int>& parameters) {
 
 
 int Board::addTriangle(const bool fill, const std::string& color, int x, int y, int height) {
-    const auto tr = std::make_shared<Triangle>(this->width, this->height, fill, color, x, y, height);
+    if (!colors.contains(color)) return -1;
+    const auto tr = std::make_shared<Triangle>(this->width, this->height, fill, this->colors[color], x, y, height);
     const int valid = isShapeValid(tr);
     if (valid == 0) {
         shapes.emplace_back(tr); return 0;
@@ -223,7 +221,8 @@ int Board::addTriangle(const bool fill, const std::string& color, int x, int y, 
 }
 
 int Board::addBox(const bool fill, const std::string& color, int x, int y, int width, int height) {
-    const auto box = std::make_shared<Box>(this->width, this->height, fill, color, x, y, width, height);
+    if (!colors.contains(color)) return -1;
+    const auto box = std::make_shared<Box>(this->width, this->height, fill, colors[color], x, y, width, height);
     const int valid = isShapeValid(box);
     if (valid == 0) {
         shapes.emplace_back(box); return 0;
@@ -232,7 +231,8 @@ int Board::addBox(const bool fill, const std::string& color, int x, int y, int w
 }
 
 int Board::addCircle(const bool fill, const std::string& color, int x, int y, int radius) {
-    const auto cir = std::make_shared<Circle>(this->width, this->height, fill, color, x, y, radius);
+    if (!colors.contains(color)) return -1;
+    const auto cir = std::make_shared<Circle>(this->width, this->height, fill, colors[color], x, y, radius);
     const int valid = isShapeValid(cir);
     if (valid == 0) {
         shapes.emplace_back(cir); return 0;
@@ -241,7 +241,8 @@ int Board::addCircle(const bool fill, const std::string& color, int x, int y, in
 }
 
 int Board::addLine(bool fill, const std::string &color, int x, int y, int x2, int y2) {
-    const auto lin = std::make_shared<Line>(this->width, this->height, fill, color, x, y, x2, y2);
+    if (!colors.contains(color)) return -1;
+    const auto lin = std::make_shared<Line>(this->width, this->height, fill, colors[color], x, y, x2, y2);
     const int valid = isShapeValid(lin);
     if (valid == 0) {
         shapes.emplace_back(lin); return 0;
@@ -260,15 +261,33 @@ int Board::saveToFile(const std::string& filepath) const {
     file << R"(  "height": )" << height << ",\n";
     file << R"(  "next_id": )" << Shape::getNextId() << ",\n";
     file << R"(  "selected_id": )" << selectedShapeIndex << ",\n";
-    file << R"(  "shapes": [)" << "\n";
 
+    file << R"(  "colors": [)" << "\n";
+    int i = 0;
+    for (const auto &val: colors | std::views::values) {
+        i++;
+        if (auto &color = val; color->name != "red" && color->name != "green" && color->name != "blue" && color->name != "white") {
+            file << "    {\n";
+            file << R"(      "name": ")" << color->name << "\",\n";
+            file << R"(      "r": )" << color->r << ",\n";
+            file << R"(      "g": )" << color->g << ",\n";
+            file << R"(      "b": )" << color->b << "\n";
+            file << "    }";
+            if (i < colors.size()-4) file << ",";
+            file << "\n";
+        }
+    }
+
+    file << "  ],\n";
+
+    file << R"(  "shapes": [)" << "\n";
     for (size_t i = 0; i < shapes.size(); i++) {
         auto &shape = shapes[i];
         file << "    {\n";
         file << R"(      "id": )" << shape->id << ",\n";
         file << R"(      "type": )" << static_cast<int>(shape->type) << ",\n";
         file << R"(      "fill": )" << shape->fill << ",\n";
-        file << R"(      "color": ")" << shape->color << "\",\n";
+        file << R"(      "color": ")" << shape->color->name << "\",\n";
         file << R"(      "x": )" << shape->x << ",\n";
         file << R"(      "y": )" << shape->y << ",\n";
 
@@ -310,19 +329,25 @@ int Board::saveToFile(const std::string& filepath) const {
 
 std::unique_ptr<Board> Board::loadFromFile(const std::string& filepath) {
     std::ifstream file(filepath);
-    if (!file.is_open()) return nullptr;
+    if (!file.is_open()) {
+        std::cout << "Error: file " << filepath << " doesnt exist." << std::endl;
+        return nullptr;
+    }
 
     nlohmann::json j;
     try {
         file >> j;
     } catch (const nlohmann::json::exception&) {
         file.close();
+        std::cout << "Error: file " << filepath << " is not a json filetype" << std::endl;
         return nullptr;
     }
     file.close();
 
-    if (!j.contains("width") || !j.contains("height") || !j.contains("next_id") || !j.contains("selected_id"))
+    if (!j.contains("width") || !j.contains("height") || !j.contains("next_id") || !j.contains("selected_id")) {
+        std::cout << "Error: file " << filepath << " does not include necessary board parameters"<< std::endl;
         return nullptr;
+    }
 
     int width = j["width"];
     int height = j["height"];
@@ -330,60 +355,136 @@ std::unique_ptr<Board> Board::loadFromFile(const std::string& filepath) {
     Shape::setNextId(j["next_id"]);
     board->selectedShapeIndex = j["selected_id"];
 
+    if (!j.contains("colors") || !j["colors"].is_array()) {
+        std::cout << "Error: file " << filepath << " does not contain color parameters." << std::endl;
+        return nullptr;
+    }
+    for (const auto& c : j["colors"]) {
+        if (!c.contains("name") || !c.contains("r") || !c.contains("g") || !c.contains("b")) {
+            std::cout << "Error: some color doesn't contain necessary parameters " << filepath << std::endl;
+            return nullptr;
+        }
+        std::string name = c["name"];
+        int r = c["r"];
+        int g = c["g"];
+        int b = c["b"];
+        if (r < 0 || r > 255) {
+            std::cout << "Error: color " << name << "has invalid r value." << std::endl;
+            return nullptr;
+        }
+        if (g < 0 || g > 255) {
+            std::cout << "Error: color " << name << "has invalid g value." << std::endl;
+            return nullptr;
+        }
+        if (b < 0 || b > 255) {
+            std::cout << "Error: color " << name << "has invalid b value." << std::endl;
+            return nullptr;
+        }
+
+        if (board->colors.contains(name)) {
+            std::cout << "Error: color " << name << " already exists." << std::endl;
+            return nullptr;
+        }
+        board->colors[name] = std::make_shared<Color>(name, r, g, b);
+    }
+
     if (!j.contains("shapes") || !j["shapes"].is_array())
         return board;
-
     for (const auto& s : j["shapes"]) {
-        if (!s.contains("id") || !s.contains("type") || !s.contains("fill") || !s.contains("color") || !s.contains("x") || !s.contains("y"))
+        if (!s.contains("id") || !s.contains("type") || !s.contains("fill") || !s.contains("color") || !s.contains("x") || !s.contains("y")) {
+            std::cout << "Error: some shape doesn't contain necessary parameters " << filepath << std::endl;
             return nullptr;
+        }
 
         int id = s["id"];
         auto type = static_cast<ShapeType>(s["type"].get<int>());
         bool fill = s["fill"].get<int>() != 0;
         std::string color = s["color"];
+        if (!board->colors.contains(color)) {
+            std::cout << "Error: shape with id " << id << " uses unknown color" << std::endl;
+            return nullptr;
+        }
         int x = s["x"];
         int y = s["y"];
 
         switch (type) {
             case ShapeType::Triangle: {
-                if (!s.contains("height")) return nullptr;
+                if (!s.contains("height")){
+                    std::cout << "Error: triangle with id:" << id << "doesn't contain height of triangle" << std::endl;
+                    return nullptr;
+                }
                 int h = s["height"];
-                auto tr = std::make_shared<Triangle>(board->width, board->height, fill, color, x, y, h);
+                auto tr = std::make_shared<Triangle>(board->width, board->height, fill, board->colors[color], x, y, h);
                 tr->id = id;
-                if (board->isShapeValid(tr) != 0) return nullptr;
+                if (board->isShapeValid(tr) != 0) {
+                    std::cout << "Error: shape with id:" << id << "will be a duplicate" << std::endl;
+                    return nullptr;
+                }
                 board->shapes.emplace_back(tr);
                 break;
             }
             case ShapeType::Box: {
-                if (!s.contains("width") || !s.contains("height")) return nullptr;
+                if (!s.contains("width") || !s.contains("height")){
+                    std::cout << "Error: box with id:" << id << "doesn't contain width and height" << std::endl;
+                    return nullptr;
+                }
                 int w = s["width"];
                 int h = s["height"];
-                auto box = std::make_shared<Box>(board->width, board->height, fill, color, x, y, w, h);
+                auto box = std::make_shared<Box>(board->width, board->height, fill, board->colors[color], x, y, w, h);
                 box->id = id;
-                if (board->isShapeValid(box) != 0) return nullptr;
+                if (board->isShapeValid(box) != 0) {
+                    std::cout << "Error: shape with id:" << id << "will be a duplicate" << std::endl;
+                    return nullptr;
+                }
                 board->shapes.emplace_back(box);
                 break;
             }
             case ShapeType::Circle: {
-                if (!s.contains("radius")) return nullptr;
+                if (!s.contains("radius")) {
+                    std::cout << "Error: circle with id:" << id << "doesn't contain radius" << std::endl;
+                    return nullptr;
+                }
                 int r = s["radius"];
-                auto cir = std::make_shared<Circle>(board->width, board->height, fill, color, x, y, r);
+                auto cir = std::make_shared<Circle>(board->width, board->height, fill, board->colors[color], x, y, r);
                 cir->id = id;
-                if (board->isShapeValid(cir) != 0) return nullptr;
+                if (board->isShapeValid(cir) != 0) {
+                    std::cout << "Error: shape with id:" << id << "will be a duplicate" << std::endl;
+                    return nullptr;
+                }
                 board->shapes.emplace_back(cir);
                 break;
             }
             case ShapeType::Line: {
-                if (!s.contains("dx") || !s.contains("dy")) return nullptr;
+                if (!s.contains("dx") || !s.contains("dy")) {
+                    std::cout << "Error: line with id:" << id << "doesn't contain dx and dy" << std::endl;
+                    return nullptr;
+                }
                 int dx = s["dx"];
                 int dy = s["dy"];
-                auto lin = std::make_shared<Line>(board->width, board->height, fill, color, x, y, x + dx, y + dy);
+                auto lin = std::make_shared<Line>(board->width, board->height, fill, board->colors[color], x, y, x + dx, y + dy);
                 lin->id = id;
-                if (board->isShapeValid(lin) != 0) return nullptr;
+                if (board->isShapeValid(lin) != 0) {
+                    std::cout << "Error: shape with id:" << id << "will be a duplicate" << std::endl;
+                    return nullptr;
+                }
                 board->shapes.emplace_back(lin);
                 break;
             }
         }
     }
     return board;
+}
+
+int Board::addColor(const std::string& name, const int r, const int g, const int b) {
+    if (colors.contains(name)) return 1;
+    colors.emplace(name, std::make_shared<Color>(name, r, g, b));
+    return 0;
+}
+
+std::vector<std::string> Board::listColors() const {
+    std::vector<std::string> result;
+    if (colors.empty()) return result;
+    for (const auto& c : colors)
+        result.emplace_back(c.second->info());
+    return result;
 }

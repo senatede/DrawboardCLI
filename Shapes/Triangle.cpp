@@ -4,7 +4,7 @@ class Triangle final : public Shape {
 public:
     int height;
 
-    Triangle(const int boardWidth, const int boardHeight, const bool fill, const std::string &color,
+    Triangle(const int boardWidth, const int boardHeight, const bool fill, const std::shared_ptr<Color> &color,
         const int x, const int y, const int h)
         : Shape(boardWidth, boardHeight, ShapeType::Triangle, fill, color, x, y), height(h) {}
     ~Triangle() override = default;
@@ -17,12 +17,12 @@ public:
 
     std::string info() override {
         std::string result;
+        result += "id:";
         result += std::to_string(id);
         result += " triangle ";
         if (fill) result += "fill ";
         else result += "frame ";
-        result += std::tolower(color[0]);
-        result += color.substr(1);
+        result += color->name;
         result += " x:";
         result += std::to_string(x);
         result += " y:";

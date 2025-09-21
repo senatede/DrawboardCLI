@@ -2,7 +2,7 @@ class Box final : public Shape {
 public:
     int width, height;
 
-    Box(const int boardWidth, const int boardHeight, const bool fill, std::string color,
+    Box(const int boardWidth, const int boardHeight, const bool fill, const std::shared_ptr<Color> &color,
         const int x, const int y, const int w, const int h)
         : Shape(boardWidth, boardHeight, ShapeType::Box, fill, color, x, y), width(w), height(h) {}
 
@@ -16,12 +16,12 @@ public:
 
     std::string info() override {
         std::string result;
+        result += "id:";
         result += std::to_string(id);
         result += " box ";
         if (fill) result += "fill ";
         else result += "frame ";
-        result += std::tolower(color[0]);
-        result += color.substr(1);
+        result += color->name;
         result += " x:";
         result += std::to_string(x);
         result += " y:";

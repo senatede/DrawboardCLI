@@ -3,7 +3,7 @@
 class Line final : public Shape {
     public:
     int dx, dy;
-    Line(const int boardWidth, const int boardHeight, const bool fill, const std::string &color,
+    Line(const int boardWidth, const int boardHeight, const bool fill, const std::shared_ptr<Color> &color,
         const int x, const int y, const int x2, const int y2)
         : Shape(boardWidth, boardHeight, ShapeType::Line, fill, color, x, y), dx(x2-x), dy(y2-y) {};
     ~Line() override = default;
@@ -16,10 +16,10 @@ class Line final : public Shape {
 
     std::string info() override {
         std::string result;
+        result += "id:";
         result += std::to_string(id);
         result += " line ";
-        result += std::tolower(color[0]);
-        result += color.substr(1);
+        result += color->name;
         result += " x:";
         result += std::to_string(x);
         result += " y:";

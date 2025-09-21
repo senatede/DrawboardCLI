@@ -3,7 +3,7 @@
 class Circle final : public Shape {
     public:
     int radius;
-    Circle(const int boardWidth, const int boardHeight, const bool fill, const std::string &color,
+    Circle(const int boardWidth, const int boardHeight, const bool fill, const std::shared_ptr<Color> &color,
         const int x, const int y, const int r)
         : Shape(boardWidth, boardHeight, ShapeType::Circle, fill, color, x, y), radius(r) {};
     ~Circle() override = default;
@@ -16,12 +16,12 @@ class Circle final : public Shape {
 
     std::string info() override {
         std::string result;
+        result += "id:";
         result += std::to_string(id);
         result += " circle ";
         if (fill) result += "fill ";
         else result += "frame ";
-        result += std::tolower(color[0]);
-        result += color.substr(1);
+        result += color->name;
         result += " x:";
         result += std::to_string(x);
         result += " y:";
