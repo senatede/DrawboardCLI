@@ -1,12 +1,16 @@
 #include "CLI.h"
 
+#include <iostream>
+
 CLI::CLI(const int h) : term_height(h) {
     std::cout << "\033[2J\033[H";
     std::cout << "> ";
     board = nullptr;
-    while (true) {
+}
+
+[[noreturn]] void CLI::run() {
+    while (true)
         command_handling(command_input());
-    }
 }
 
 std::string CLI::command_input() {
@@ -72,8 +76,8 @@ int CLI::exit_() {
 
 int CLI::create(const std::string& input) {
     std::istringstream iss(input);
-    std::string cmd;
-    int w, h;
+    std::string cmd = "";
+    int w = 0, h = 0;
     iss >> cmd >> w >> h;
     if (iss && !iss.fail()) {
         delete board;
@@ -105,8 +109,9 @@ int CLI::draw() const {
 
 int CLI::add(const std::string& input) const {
     std::istringstream iss(input);
-    std::string cmd, shape, fill_word, color;
-    int x, y;
+    std::string cmd = "", shape = "", fill_word = "", color = "";
+    int x = 0, y = 0;
+    ShapeType type;
 
     iss >> cmd >> shape;
     if (board == nullptr) {
@@ -115,10 +120,14 @@ int CLI::add(const std::string& input) const {
     if (iss.fail()) {
         std::cout << "Error: use add <shape: triangle|box|circle|line>" << std::endl; return 1;
     }
-    if (shape != "triangle" && shape != "box" && shape != "circle" && shape != "line") {
+    if (shape == "triangle") type = ShapeType::Triangle;
+    else if (shape == "box") type = ShapeType::Box;
+    else if (shape == "circle") type = ShapeType::Circle;
+    else if (shape == "line") type = ShapeType::Line;
+    else {
         std::cout << "Error: unknown shape " + shape << std::endl; return 1;
     }
-    if (shape == "triangle" || shape == "box" || shape == "circle") {
+    if (type == ShapeType::Triangle || type == ShapeType::Box || type == ShapeType::Circle) {
         iss >> fill_word;
         if (fill_word != "fill" && fill_word != "frame") {
             std::cout << "Error: unknown fill " + fill_word << std::endl; return 1;
@@ -131,44 +140,18 @@ int CLI::add(const std::string& input) const {
     int value;
     while (iss >> value) parameters.push_back(value);
 
-    auto tryAddShape = [&](const int size, auto addFunc) {
-        if (parameters.size() != size) {
-            std::cout << "Error: incorrect number of parameters" << std::endl;
-            return 1;
-        }
-        switch (addFunc()) {
-            case -1:
-                std::cout << "Error: unknown color " + color << std::endl; return 1;
-            case 1:
-                std::cout << "Error: shape won't be visible." << std::endl; return 1;
-            case 2:
-                std::cout << "Error: shape will cover all screen." << std::endl; return 1;
-            case 3:
-                std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
-            default:
-                board->print(); return board->height;
-        }
-    };
-
-    if (shape == "triangle") {
-        return tryAddShape(1, [&] {
-            return board->addTriangle(fill, color, x, y, parameters[0]);
-        });
+    switch (board->addShape(type, fill, color, x, y, parameters)) {
+        case ERROR_INVALID_COLOR:
+            std::cout << "Error: unknown color " + color << std::endl; return 1;
+        case ERROR_INVISIBLE_SHAPE:
+            std::cout << "Error: shape won't be visible." << std::endl; return 1;
+        case ERROR_TOO_LARGE_SHAPE:
+            std::cout << "Error: shape will cover all screen." << std::endl; return 1;
+        case ERROR_DUPLICATE_SHAPE:
+            std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
+        default:
+            board->print(); return board->height;
     }
-    if (shape == "box") {
-        return tryAddShape(2, [&] {
-            return board->addBox(fill, color, x, y, parameters[0], parameters[1]);
-        });
-    }
-    if (shape == "circle") {
-        return tryAddShape(1, [&] {return board->addCircle(fill, color, x, y, parameters[0]);
-        });
-    }
-    if (shape == "line") {
-        return tryAddShape(2, [&] {return board->addLine(fill, color, x, y, parameters[0], parameters[1]);
-        });
-    }
-    return 0;
 }
 
 int CLI::unknown(const std::string& input) {
@@ -208,15 +191,15 @@ int CLI::select(const std::string &input) const {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
     std::istringstream iss(input);
-    std::string cmd;
+    std::string cmd = "";
     iss >> cmd;
     std::vector<int> parameters;
-    int value;
+    int value = 0;
     while (iss >> value) parameters.push_back(value);
     switch (parameters.size()) {
-        case 1:
+        case SELECT_BY_ID_CMD_SIZE:
             if (board->selectShape(parameters[0])) std::cout << "Error: shape with such id does not exist." << std::endl; break;
-        case 2:
+        case SELECT_BY_COORDINATES_CMD_SIZE:
             if (board->selectShape(parameters[0], parameters[1])) std::cout << "Error: shape with those coordinates does not exist." << std::endl; break;
         default:
             std::cout << "Error: wrong parameters" << std::endl;
@@ -228,7 +211,7 @@ int CLI::remove() const {
     if (board == nullptr) {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
-    if (board->removeShape()) {
+    if (board->removeShape() == ERROR_NO_SELECTION) {
         std::cout << "Error: select a shape first." << std::endl; return 1;
     }
     return draw();
@@ -239,14 +222,14 @@ int CLI::paint(const std::string& input) const {
         std::cout << "Error: board doesn't exist." << std::endl; return -1;
     }
     std::istringstream iss(input);
-    std::string cmd, color;
+    std::string cmd = "", color = "";
     iss >> cmd >> color;
     switch (board->paintShape(color)) {
-        case 1:
+        case ERROR_NO_SELECTION:
             std::cout << "Error: select a shape first." << std::endl; return 1;
-        case 2:
+        case ERROR_INVALID_COLOR:
             std::cout << "Error: unknown color - " << color << std::endl; return 1;
-        case 3:
+        case ERROR_DUPLICATE_SHAPE:
             std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
         default:
             return draw();
@@ -258,21 +241,21 @@ int CLI::edit(const std::string& input) const {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
     std::istringstream iss(input);
-    std::string cmd;
+    std::string cmd = "";
     iss >> cmd;
     std::vector<int> parameters;
-    int value;
+    int value = 0;
     while (iss >> value) parameters.push_back(value);
     switch (board->editShape(parameters)) {
-        case -1:
+        case ERROR_NO_SELECTION:
             std::cout << "Error: select a shape first." << std::endl; return 1;
-        case -2:
+        case ERROR_INVALID_ARGUMENTS:
             std::cout << "Error: invalid argument count." << std::endl; return 1;
-        case 1:
+        case ERROR_INVISIBLE_SHAPE:
             std::cout << "Error: shape won't be visible." << std::endl; return 1;
-        case 2:
+        case ERROR_TOO_LARGE_SHAPE:
             std::cout << "Error: shape will cover all screen" << std::endl; return 1;
-        case 3:
+        case ERROR_DUPLICATE_SHAPE:
             std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
         default:
             return draw();
@@ -284,21 +267,21 @@ int CLI::move(const std::string& input) const {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
     std::istringstream iss(input);
-    std::string cmd;
+    std::string cmd = "";
     iss >> cmd;
     std::vector<int> parameters;
-    int value;
+    int value = 0;
     while (iss >> value) parameters.push_back(value);
     switch (board->moveShape(parameters)) {
-        case -1:
+        case ERROR_NO_SELECTION:
             std::cout << "Error: select a shape first." << std::endl; return 1;
-        case -2:
+        case ERROR_INVALID_ARGUMENTS:
             std::cout << "Error: invalid argument count." << std::endl; return 1;
-        case 1:
+        case ERROR_INVISIBLE_SHAPE:
             std::cout << "Error: shape won't be visible." << std::endl; return 1;
-        case 2:
+        case ERROR_TOO_LARGE_SHAPE:
             std::cout << "Error: shape will cover all screen" << std::endl; return 1;
-        case 3:
+        case ERROR_DUPLICATE_SHAPE:
             std::cout << "Error: shape will be a duplicate." << std::endl; return 1;
         default:
             return draw();
@@ -310,7 +293,7 @@ int CLI::save(const std::string& input) const {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
     std::istringstream iss(input);
-    std::string cmd, filepath;
+    std::string cmd = "", filepath = "";
     iss >> cmd >> filepath;
     if (board->saveToFile(filepath)) std::cout << "Error: saving file failed." << std::endl;
     else std::cout << "Successfully saved to file " << filepath << std::endl;
@@ -318,7 +301,7 @@ int CLI::save(const std::string& input) const {
 }
 
 int CLI::load(const std::string& input) {
-    std::string cmd, filepath;
+    std::string cmd = "", filepath = "";
     std::istringstream iss(input);
     iss >> cmd >> filepath;
     auto new_board = Board::loadFromFile(filepath);
@@ -334,8 +317,8 @@ int CLI::color(const std::string& input) const {
         std::cout << "Error: board doesn't exist." << std::endl; return 1;
     }
     std::istringstream iss(input);
-    std::string cmd, name;
-    int r, g, b;
+    std::string cmd = "", name = "";
+    int r = 0, g = 0, b = 0;
     iss >> cmd >> name >> r >> g >> b;
     if (iss.fail()) std::cout << "Error: invalid parameters, usage: color <name> <r> <g> <b>." << std::endl;
     else if (r<0 || r>256) std::cout << "Error: invalid r value, should be 0 between 255." << std::endl;

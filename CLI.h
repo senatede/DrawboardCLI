@@ -2,13 +2,12 @@
 #define CLI_H
 
 #include <sstream>
-#include <iostream>
 #include <string>
 #include "Board.h"
 
 class CLI {
-    int term_height;
-    Board* board;
+    int term_height = 0;
+    Board* board = nullptr;
 
     static std::string command_input();
     void command_handling(const std::string& input);
@@ -33,7 +32,8 @@ class CLI {
     int colors() const;
 
 public:
-    [[noreturn]] explicit CLI(int h);
+    explicit CLI(int h);
+    [[noreturn]] void run();
 };
 
 #endif //CLI_H

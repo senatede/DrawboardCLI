@@ -15,4 +15,6 @@ int main(const int argc, char* argv[]) {
     }
     int boardSize = static_cast<int>(value);
     CLI c(boardSize);
+    c.run();
+    return 0;
 }
