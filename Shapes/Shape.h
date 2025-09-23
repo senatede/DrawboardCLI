@@ -1,5 +1,4 @@
-#ifndef SHAPE_H
-#define SHAPE_H
+#pragma once
 
 #include <utility>
 #include <vector>
@@ -12,9 +11,7 @@ protected:
     int boardWidth, boardHeight;
     static int nextId;
 
-    void setPixel(std::vector<std::pair<int, int>>& coordinates, const int row, const int col) const {
-        if (col >= 0 && col < boardWidth && row >= 0 && row < boardHeight) coordinates.emplace_back(row, col);
-    }
+    void setPixel(std::vector<std::pair<int, int>>& coordinates, const int row, const int col) const;
 public:
     ShapeType type;
     int x, y;
@@ -22,24 +19,13 @@ public:
     bool fill;
     std::shared_ptr<Color> color;
 
-    Shape(const int boardWidth, const int boardHeight, const ShapeType type, const bool fill, const std::shared_ptr<Color> &color, const int x, const int y) :
-        x(x), y(y), boardWidth(boardWidth), boardHeight(boardHeight), type(type), fill(fill), color(color), id(nextId++) {}
+    Shape(const int boardWidth, const int boardHeight, const ShapeType type, const bool fill, const std::shared_ptr<Color> &color, const int x, const int y)
+        : boardWidth(boardWidth), boardHeight(boardHeight), type(type), x(x), y(y), id(nextId++), fill(fill), color(color) {}
     virtual ~Shape() = default;
 
-    virtual bool equals(const Shape& other) const {
-        return id != other.id &&
-               type == other.type &&
-               fill == other.fill &&
-               color == other.color &&
-               x == other.x &&
-               y == other.y;
-    }
-
+    virtual bool equals(const Shape& other) const;
     virtual std::string info() = 0;
     virtual std::vector<std::pair<int, int>> getCoordinates() = 0;
-
     static int getNextId() {return nextId;}
     static void setNextId(const int id) {nextId = id;}
 };
-
-#endif //SHAPE_H

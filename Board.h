@@ -1,16 +1,26 @@
-#ifndef BOARD_H
-#define BOARD_H
+#pragma once
 
-#include <iostream>
+#include <fstream>
 #include <nlohmann/json.hpp>
 #include <vector>
 #include <unordered_map>
 #include <Shapes/Color.h>
 #include "Shapes/Shape.h"
-#include "Shapes/Triangle.cpp"
-#include "Shapes/Box.cpp"
-#include "Shapes/Circle.cpp"
-#include "Shapes/Line.cpp"
+
+
+enum select {
+    SELECT_BY_ID_CMD_SIZE,
+    SELECT_BY_COORDINATES_CMD_SIZE
+};
+
+enum errors {
+    ERROR_NO_SELECTION,
+    ERROR_INVALID_COLOR,
+    ERROR_DUPLICATE_SHAPE,
+    ERROR_INVALID_ARGUMENTS,
+    ERROR_INVISIBLE_SHAPE,
+    ERROR_TOO_LARGE_SHAPE,
+};
 
 
 class Board {
@@ -31,10 +41,7 @@ public:
     int paintShape(const std::string& color);
     int editShape(const std::vector<int>& parameters) const;
     int moveShape(const std::vector<int>& parameters);
-    int addTriangle(bool fill, const std::string& color, int x, int y, int height);
-    int addBox(bool fill, const std::string& color, int x, int y, int width, int height);
-    int addCircle(bool fill, const std::string& color, int x, int y, int radius);
-    int addLine(bool fill, const std::string& color, int x, int y, int x2, int y2);
+    int addShape(ShapeType type, bool fill, const std::string& color, int x, int y, const std::vector<int>& params);
     int addColor(const std::string& name, int r, int g, int b);
     std::vector<std::string> listColors() const;
 
@@ -49,6 +56,3 @@ private:
     int isShapeValid(const std::shared_ptr<Shape>& shape) const;
 };
 
-
-
-#endif

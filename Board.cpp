@@ -1,5 +1,12 @@
 #include "Board.h"
 
+#include "Shapes/Triangle.h"
+#include "Shapes/Box.h"
+#include "Shapes/Circle.h"
+#include "Shapes/Line.h"
+#include "Shapes/ShapeFactory.h"
+#include <iostream>
+
 int Shape::nextId = 0;
 
 Board::Board(const int w, const int h) : width(w), height(h), shapes(0), grid(std::vector(this->height, std::vector<std::shared_ptr<Color>>(this->width, nullptr))) {
@@ -51,7 +58,8 @@ std::vector<std::string> Board::listShapes() const {
     result.reserve(this->shapes.size());
     for (const auto& shape : this->shapes) {
         std::string info = "";
-        if (shape->id == shapes[selectedShapeIndex]->id) info += "* ";
+        if (selectedShapeIndex >= 0 && selectedShapeIndex < shapes.size() && shape->id == shapes[selectedShapeIndex]->id)
+            info += "* ";
         info += shape->info();
         result.emplace_back(info);
     }
@@ -70,6 +78,32 @@ int Board::selectShape(int id) {
     return 0;
 }
 
+int Board::isShapeValid(const std::shared_ptr<Shape>& shape) const {
+    const size_t n_coord = shape->getCoordinates().size();
+    if (n_coord == 0) return ERROR_INVISIBLE_SHAPE;
+    if (n_coord == width * height) return ERROR_TOO_LARGE_SHAPE;
+    for (const auto& sh : this->shapes) {
+        if (shape->equals(*sh)) return ERROR_DUPLICATE_SHAPE;
+    }
+    return 0;
+}
+
+int Board::addShape(ShapeType type, const bool fill, const std::string& color, const int x, const int y, const std::vector<int>& params) {
+    if (!colors.contains(color)) return ERROR_INVALID_COLOR;
+
+    try {
+        auto shape = ShapeFactory::createShape(type, this->width, this->height, fill, colors[color], x, y, params);
+
+        const int valid = isShapeValid(shape);
+        if (valid == 0) {
+            shapes.emplace_back(shape); return 0;
+        }
+        return valid;
+    } catch (const std::invalid_argument&) {
+        return ERROR_INVALID_ARGUMENTS;
+    }
+}
+
 int Board::selectShape(int x, int y) {
     auto it = [&] {
         for (int i = static_cast<int>(shapes.size()) - 1; i >= 0; i--)
@@ -79,22 +113,23 @@ int Board::selectShape(int x, int y) {
         return -1;
     };
     const int index = it();
-    if (index == -1) return 1;
+    if (index == -1) return ERROR_NO_SELECTION;
     selectedShapeIndex = index;
     std::cout << "You have selected shape with " << shapes[selectedShapeIndex]->info() << std::endl;
     return 0;
 }
 
+
 int Board::removeShape() {
-    if (selectedShapeIndex == -1) return 1;
+    if (selectedShapeIndex == -1) return ERROR_NO_SELECTION;
     shapes.erase(shapes.begin() + selectedShapeIndex);
     selectedShapeIndex = -1;
     return 0;
 }
 
 int Board::paintShape(const std::string& color) {
-    if (selectedShapeIndex == -1) return 1;
-    if (!colors.contains(color)) return 2;
+    if (selectedShapeIndex == -1) return ERROR_NO_SELECTION;
+    if (!colors.contains(color)) return ERROR_INVALID_COLOR;
     const auto old_color = shapes[selectedShapeIndex]->color;
     shapes[selectedShapeIndex]->color = colors[color];
     if (const int code = isShapeValid(shapes[selectedShapeIndex]); code != 0) {
@@ -104,22 +139,12 @@ int Board::paintShape(const std::string& color) {
     return 0;
 }
 
-int Board::isShapeValid(const std::shared_ptr<Shape>& shape) const {
-    const size_t n_coord = shape->getCoordinates().size();
-    if (n_coord == 0) return 1;
-    if (n_coord == width * height) return 2;
-    for (const auto& sh : this->shapes) {
-        if (shape->equals(*sh)) return 3;
-    }
-    return 0;
-}
-
 int Board::editShape(const std::vector<int>& parameters) const {
-    if (selectedShapeIndex == -1) return -1;
+    if (selectedShapeIndex == -1) return ERROR_NO_SELECTION;
 
     switch (auto shape = shapes[selectedShapeIndex]; shape->type) {
         case ShapeType::Triangle: {
-            if (parameters.size() != 1) return -2;
+            if (parameters.size() != 1) return ERROR_INVALID_ARGUMENTS;
 
             const auto tr = std::dynamic_pointer_cast<Triangle>(shape);
             const int old_height = tr->height;
@@ -132,7 +157,7 @@ int Board::editShape(const std::vector<int>& parameters) const {
             return valid;
         }
         case ShapeType::Box:{
-            if (parameters.size() != 2) return -2;
+            if (parameters.size() != 2) return ERROR_INVALID_ARGUMENTS;
 
             const auto box = std::dynamic_pointer_cast<Box>(shape);
             const int old_width = box->width;
@@ -149,7 +174,7 @@ int Board::editShape(const std::vector<int>& parameters) const {
             return valid;
         }
         case ShapeType::Circle: {
-            if (parameters.size() != 1) return -2;
+            if (parameters.size() != 1) return ERROR_INVALID_ARGUMENTS;
 
             const auto cir = std::dynamic_pointer_cast<Circle>(shape);
             const int old_radius = cir->radius;
@@ -162,7 +187,7 @@ int Board::editShape(const std::vector<int>& parameters) const {
             return valid;
         }
         case ShapeType::Line: {
-            if (parameters.size() != 2) return -2;
+            if (parameters.size() != 2) return ERROR_INVALID_ARGUMENTS;
 
             const auto lin = std::dynamic_pointer_cast<Line>(shape);
             const int old_dx = lin->dx;
@@ -183,7 +208,7 @@ int Board::editShape(const std::vector<int>& parameters) const {
 
 int Board::moveShape(const std::vector<int>& parameters) {
     int x, y;
-    if (selectedShapeIndex == -1) return -1;
+    if (selectedShapeIndex == -1) return ERROR_NO_SELECTION;
     auto shape = shapes[selectedShapeIndex];
     switch (parameters.size()) {
         case 0:
@@ -191,7 +216,7 @@ int Board::moveShape(const std::vector<int>& parameters) {
         case 2:
             x = parameters[0]; y = parameters[1]; break;
         default:
-            return -2;
+            return ERROR_INVALID_ARGUMENTS;
     }
     const int old_x = shape->x;
     const int old_y = shape->y;
@@ -208,49 +233,6 @@ int Board::moveShape(const std::vector<int>& parameters) {
     shape->y = old_y;
     return valid;
 }
-
-
-int Board::addTriangle(const bool fill, const std::string& color, int x, int y, int height) {
-    if (!colors.contains(color)) return -1;
-    const auto tr = std::make_shared<Triangle>(this->width, this->height, fill, this->colors[color], x, y, height);
-    const int valid = isShapeValid(tr);
-    if (valid == 0) {
-        shapes.emplace_back(tr); return 0;
-    }
-    return valid;
-}
-
-int Board::addBox(const bool fill, const std::string& color, int x, int y, int width, int height) {
-    if (!colors.contains(color)) return -1;
-    const auto box = std::make_shared<Box>(this->width, this->height, fill, colors[color], x, y, width, height);
-    const int valid = isShapeValid(box);
-    if (valid == 0) {
-        shapes.emplace_back(box); return 0;
-    }
-    return valid;
-}
-
-int Board::addCircle(const bool fill, const std::string& color, int x, int y, int radius) {
-    if (!colors.contains(color)) return -1;
-    const auto cir = std::make_shared<Circle>(this->width, this->height, fill, colors[color], x, y, radius);
-    const int valid = isShapeValid(cir);
-    if (valid == 0) {
-        shapes.emplace_back(cir); return 0;
-    }
-    return valid;
-}
-
-int Board::addLine(bool fill, const std::string &color, int x, int y, int x2, int y2) {
-    if (!colors.contains(color)) return -1;
-    const auto lin = std::make_shared<Line>(this->width, this->height, fill, colors[color], x, y, x2, y2);
-    const int valid = isShapeValid(lin);
-    if (valid == 0) {
-        shapes.emplace_back(lin); return 0;
-    }
-    return valid;
-}
-
-#include <fstream>
 
 int Board::saveToFile(const std::string& filepath) const {
     std::ofstream file(filepath);
